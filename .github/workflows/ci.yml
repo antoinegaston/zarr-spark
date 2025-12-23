@@ -23,7 +23,7 @@ jobs:
         run: |
           set -euo pipefail
           java -version
-          java -version 2>&1 | grep -E 'version "11\\.' >/dev/null
+          java -version 2>&1 | grep -E 'version "11\.' >/dev/null
 
       - name: Run tests
         run: sbt test
