@@ -1,0 +1,40 @@
+# macOS
+.DS_Store
+
+# SBT/Scala build outputs
+target/
+project/target/
+project/project/target/
+project/project/project/target/
+project/project/project/project/target/
+
+# Scala tooling
+.metals/
+.bloop/
+.bsp/
+.scala-build/
+
+# IDEs
+.idea/
+*.iml
+
+# Logs and JVM artifacts
+*.log
+hs_err_pid*.log
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Editor swap/backup files
+*.swp
+*.swo
+*~
