@@ -29,4 +29,4 @@ jobs:
           java -version 2>&1 | grep -E 'version "11\.' >/dev/null
 
       - name: Run tests
-        run: sbt test
+        run: sbt -v test
