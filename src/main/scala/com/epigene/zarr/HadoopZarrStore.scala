@@ -58,15 +58,19 @@ final class HadoopZarrStore(rootUri: String, hadoopConf: Configuration) extends 
       return out.stream()
     }
 
+    val rootPathStr = Option(rootPath.toUri.getPath).getOrElse(rootPath.toString).stripSuffix("/")
+
+    def keyFor(fullPath: Path): String = {
+      val fullPathStr = Option(fullPath.toUri.getPath).getOrElse(fullPath.toString)
+      fullPathStr.stripPrefix(rootPathStr).stripPrefix("/")
+    }
+
     def walk(dir: Path): Unit = {
       val stats: Array[FileStatus] = fs.listStatus(dir)
       stats.foreach { st =>
         if (st.isDirectory) walk(st.getPath)
         else {
-          val full = st.getPath.toString
-          val root = rootPath.toString.stripSuffix("/")
-          val key2 = full.stripPrefix(root).stripPrefix("/")
-          out.add(key2)
+          out.add(keyFor(st.getPath))
         }
       }
     }
