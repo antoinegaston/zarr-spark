@@ -15,6 +15,12 @@ lazy val root = (project in file("."))
     version := "0.1.3",
     organization := "com.epigene",
     publishMavenStyle := true,
+    dependencyOverrides ++= Seq(
+      "com.fasterxml.jackson.core" % "jackson-databind" % "2.15.2",
+      "com.fasterxml.jackson.core" % "jackson-core" % "2.15.2",
+      "com.fasterxml.jackson.core" % "jackson-annotations" % "2.15.2",
+      "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.15.2"
+    ),
     // Exclude provided dependencies (Spark) from assembly; include others like zarr-java
     assembly / test := {},
     assembly / assemblyMergeStrategy := {
