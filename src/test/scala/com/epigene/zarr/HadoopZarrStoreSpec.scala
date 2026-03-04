@@ -1,18 +1,16 @@
 package com.epigene.zarr
 
 import org.apache.hadoop.conf.Configuration
-import org.scalatest.funsuite.AnyFunSuite
-import org.scalatest.matchers.should.Matchers
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 
 import scala.jdk.CollectionConverters._
 
-class HadoopZarrStoreSpec extends AnyFunSuite with Matchers {
+class HadoopZarrStoreSpec extends ZarrBaseSpec {
 
-  test("HadoopZarrStore reads and lists files from local filesystem") {
-    assume(TestEnv.hadoopAvailable, "Hadoop UserGroupInformation is not supported on this JDK.")
+  test("reads and lists files from local filesystem") {
+    assumeHadoop()
     ZarrTestUtils.withTempDir() { root =>
       val fileA = root.resolve("a").resolve("b.txt")
       val fileB = root.resolve("a").resolve("c.txt")

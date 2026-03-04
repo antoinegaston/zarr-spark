@@ -1,15 +1,6 @@
 package com.epigene.zarr
 
-import org.apache.spark.sql.util.CaseInsensitiveStringMap
-import org.scalatest.funsuite.AnyFunSuite
-import org.scalatest.matchers.should.Matchers
-
-import scala.jdk.CollectionConverters._
-
-class ZarrUtilsSpec extends AnyFunSuite with Matchers {
-
-  private def options(pairs: (String, String)*): CaseInsensitiveStringMap =
-    new CaseInsensitiveStringMap(pairs.toMap.asJava)
+class ZarrUtilsSpec extends ZarrBaseSpec {
 
   test("normalizeStoreRoots handles volumes and local paths") {
     ZarrUtils.normalizeStoreRoots("dbfs:/Volumes/data") shouldBe Seq("dbfs:/Volumes/data")
@@ -63,12 +54,12 @@ class ZarrUtilsSpec extends AnyFunSuite with Matchers {
     }
   }
 
-  test("axisMapping rejects non-2D shapes") {
+  test("requireShape2D rejects non-2D shapes") {
     intercept[IllegalArgumentException] {
-      ZarrUtils.axisMapping(Array(2))
+      ZarrUtils.requireShape2D(Array(2))
     }
     intercept[IllegalArgumentException] {
-      ZarrUtils.axisMapping(Array(2, 3, 4))
+      ZarrUtils.requireShape2D(Array(2, 3, 4))
     }
   }
 }

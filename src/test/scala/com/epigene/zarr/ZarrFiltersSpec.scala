@@ -2,16 +2,8 @@ package com.epigene.zarr
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.spark.sql.sources.{EqualTo, In}
-import org.apache.spark.sql.util.CaseInsensitiveStringMap
-import org.scalatest.funsuite.AnyFunSuite
-import org.scalatest.matchers.should.Matchers
 
-import scala.jdk.CollectionConverters._
-
-class ZarrFiltersSpec extends AnyFunSuite with Matchers {
-
-  private def options(pairs: (String, String)*): CaseInsensitiveStringMap =
-    new CaseInsensitiveStringMap(pairs.toMap.asJava)
+class ZarrFiltersSpec extends ZarrBaseSpec {
 
   test("isSupportedForPruning respects aliases") {
     val opts = options(
@@ -26,7 +18,7 @@ class ZarrFiltersSpec extends AnyFunSuite with Matchers {
   }
 
   test("toPruneSpec maps alias filters to index ranges and column blocks") {
-    assume(TestEnv.hadoopAvailable, "Hadoop UserGroupInformation is not supported on this JDK.")
+    assumeHadoop()
     ZarrTestUtils.withTempDir() { root =>
       val columnsPath = root.resolve("columns")
       val indexPath = root.resolve("index")
@@ -55,7 +47,7 @@ class ZarrFiltersSpec extends AnyFunSuite with Matchers {
   }
 
   test("toPruneSpec respects multi-index aliases") {
-    assume(TestEnv.hadoopAvailable, "Hadoop UserGroupInformation is not supported on this JDK.")
+    assumeHadoop()
     ZarrTestUtils.withTempDir() { root =>
       val columnsPath = root.resolve("columns")
       val columnsAltPath = root.resolve("columns_alt")

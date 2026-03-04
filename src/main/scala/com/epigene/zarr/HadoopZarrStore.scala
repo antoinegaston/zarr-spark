@@ -5,9 +5,11 @@ import java.util
 import java.util.stream.{Stream => JStream}
 import java.nio.ByteBuffer
 
+import scala.util.Using
+
 import dev.zarr.zarrjava.store.{Store, StoreHandle}
 import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs.{FSDataInputStream, FileStatus, FileSystem, Path}
+import org.apache.hadoop.fs.{FileStatus, FileSystem, Path}
 
 /**
  * Zarr Store backed by Hadoop FileSystem:
@@ -88,12 +90,8 @@ final class HadoopZarrStore(rootUri: String, hadoopConf: Configuration) extends 
   override def resolve(keys: String*): StoreHandle =
     new StoreHandle(this, keys: _*)
 
-  // Helpers
   private def readAll(keys: Array[String]): Array[Byte] = {
-    val pathStr = keys.mkString("/")
-    val p = resolvePath(pathStr)
-    val in: FSDataInputStream = fs.open(p)
-    try {
+    Using.resource(fs.open(resolvePath(keys))) { in =>
       val baos = new ByteArrayOutputStream()
       val buf = new Array[Byte](1024 * 1024)
       var n = in.read(buf)
@@ -102,8 +100,6 @@ final class HadoopZarrStore(rootUri: String, hadoopConf: Configuration) extends 
         n = in.read(buf)
       }
       baos.toByteArray
-    } finally {
-      in.close()
     }
   }
 }
