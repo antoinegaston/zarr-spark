@@ -1,5 +1,7 @@
 # zarr-spark
 
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+
 A Spark DataSource V2 connector for reading [Zarr](https://zarr.dev/) arrays directly from object storage, with chunk-aligned partitioning and filter pushdown.
 
 Supports Zarr **v2** and **v3**, auto-detected from metadata files. Works with any Hadoop-compatible filesystem: `dbfs:/`, `s3a://`, `abfs://`, `gs://`, `file:/`.

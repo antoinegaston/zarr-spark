@@ -14,6 +14,7 @@ lazy val root = (project in file("."))
     name := "zarr-spark",
     version := "0.1.3",
     organization := "com.epigene",
+    licenses := Seq("Apache-2.0" -> url("https://www.apache.org/licenses/LICENSE-2.0")),
     publishMavenStyle := true,
     dependencyOverrides ++= Seq(
       "com.fasterxml.jackson.core" % "jackson-databind" % "2.15.2",
