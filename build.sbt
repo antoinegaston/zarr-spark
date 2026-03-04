@@ -15,7 +15,19 @@ lazy val root = (project in file("."))
     version := "0.1.3",
     organization := "com.epigene",
     licenses := Seq("Apache-2.0" -> url("https://www.apache.org/licenses/LICENSE-2.0")),
+    homepage := Some(url("https://github.com/antoinegaston/zarr-spark")),
+    scmInfo := Some(
+      ScmInfo(
+        url("https://github.com/antoinegaston/zarr-spark"),
+        "scm:git:git@github.com:antoinegaston/zarr-spark.git"
+      )
+    ),
+    developers := List(
+      Developer("antoinegaston", "Antoine Gaston", "", url("https://github.com/antoinegaston"))
+    ),
     publishMavenStyle := true,
+    publishTo := sonatypePublishToBundle.value,
+    sonatypeCredentialHost := "central.sonatype.com",
     dependencyOverrides ++= Seq(
       "com.fasterxml.jackson.core" % "jackson-databind" % "2.15.2",
       "com.fasterxml.jackson.core" % "jackson-core" % "2.15.2",
