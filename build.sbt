@@ -4,6 +4,7 @@ import sbtassembly.MergeStrategy
 
 // Match your Databricks cluster (Scala 2.13)
 ThisBuild / scalaVersion := "2.13.12"
+ThisBuild / versionScheme := Some("early-semver")
 ThisBuild / resolvers ++= Seq(
   // Required for edu.ucar/cdm-core which is hosted in Unidata repos, not Maven Central
   "Unidata All" at "https://artifacts.unidata.ucar.edu/repository/unidata-all/"
@@ -13,7 +14,8 @@ lazy val root = (project in file("."))
   .settings(
     name := "zarr-spark",
     version := "0.1.3",
-    organization := "com.epigene",
+    organization := "io.github.antoinegaston",
+    description := "Spark DataSource V2 connector for reading Zarr arrays with chunk-aligned partitioning and filter pushdown",
     licenses := Seq("Apache-2.0" -> url("https://www.apache.org/licenses/LICENSE-2.0")),
     homepage := Some(url("https://github.com/antoinegaston/zarr-spark")),
     scmInfo := Some(
@@ -28,6 +30,10 @@ lazy val root = (project in file("."))
     publishMavenStyle := true,
     publishTo := sonatypePublishToBundle.value,
     sonatypeCredentialHost := "central.sonatype.com",
+    credentials ++= {
+      val file = Path.userHome / ".sbt" / "sonatype_credentials"
+      if (file.exists) Seq(Credentials(file)) else Seq.empty
+    },
     dependencyOverrides ++= Seq(
       "com.fasterxml.jackson.core" % "jackson-databind" % "2.15.2",
       "com.fasterxml.jackson.core" % "jackson-core" % "2.15.2",
