@@ -10,10 +10,47 @@ class ZarrUtilsSpec extends ZarrBaseSpec {
     ZarrUtils.normalizeStoreRoots("file:/tmp/data") shouldBe Seq("file:/tmp/data")
   }
 
+  test("normalizeStoreRoots handles empty, dbfs-prefix and workspace paths") {
+    ZarrUtils.normalizeStoreRoots("") shouldBe Seq.empty
+    ZarrUtils.normalizeStoreRoots("  ") shouldBe Seq.empty
+    ZarrUtils.normalizeStoreRoots("/dbfs/Volumes/data") shouldBe Seq("dbfs:/Volumes/data", "/Volumes/data")
+    ZarrUtils.normalizeStoreRoots("/Workspace/Volumes/data") shouldBe Seq("dbfs:/Volumes/data", "/Volumes/data")
+    ZarrUtils.normalizeStoreRoots("s3a://bucket/path") shouldBe Seq("s3a://bucket/path")
+  }
+
   test("resolveNodePath strips slashes and whitespace") {
     ZarrUtils.resolveNodePath(" /a/b/ ") shouldBe "a/b"
     ZarrUtils.resolveNodePath("/") shouldBe ""
     ZarrUtils.resolveNodePath("") shouldBe ""
+    ZarrUtils.resolveNodePath(null) shouldBe ""
+  }
+
+  test("boolOpt returns default or parsed value") {
+    ZarrUtils.boolOpt(options(), "flag", default = true) shouldBe true
+    ZarrUtils.boolOpt(options(), "flag", default = false) shouldBe false
+    ZarrUtils.boolOpt(options("flag" -> "true"), "flag", default = false) shouldBe true
+    ZarrUtils.boolOpt(options("flag" -> "false"), "flag", default = true) shouldBe false
+  }
+
+  test("intOpt returns default or parsed value") {
+    ZarrUtils.intOpt(options(), "size", default = 42) shouldBe 42
+    ZarrUtils.intOpt(options("size" -> "100"), "size", default = 42) shouldBe 100
+  }
+
+  test("strReq throws for missing option") {
+    intercept[IllegalArgumentException] {
+      ZarrUtils.strReq(options(), "missing")
+    }
+    ZarrUtils.strReq(options("key" -> "val"), "key") shouldBe "val"
+  }
+
+  test("requireColumnsAndIndex throws for missing options") {
+    intercept[IllegalArgumentException] {
+      ZarrUtils.requireColumnsAndIndex(options())
+    }
+    intercept[IllegalArgumentException] {
+      ZarrUtils.requireColumnsAndIndex(options("columnsNodes" -> "c"))
+    }
   }
 
   test("requireAliases defaults and validates") {
@@ -43,6 +80,22 @@ class ZarrUtilsSpec extends ZarrBaseSpec {
     }
   }
 
+  test("requireAliases rejects wrong count") {
+    intercept[IllegalArgumentException] {
+      ZarrUtils.requireAliases(
+        options("columnAliases" -> "a,b,c"),
+        Seq("c1", "c2"),
+        Seq("i")
+      )
+    }
+  }
+
+  test("requireAliases defaults multi-index without explicit aliases") {
+    val (cols, idxs) = ZarrUtils.requireAliases(options(), Seq("c1", "c2"), Seq("i1", "i2"))
+    cols shouldBe Seq("columns_1", "columns_2")
+    idxs shouldBe Seq("indexes_1", "indexes_2")
+  }
+
   test("layerSpec validates valuesNode") {
     val spec = ZarrUtils.layerSpec(options("valuesNode" -> "layers/raw/"))
     spec match {
@@ -52,9 +105,15 @@ class ZarrUtilsSpec extends ZarrBaseSpec {
     intercept[IllegalArgumentException] {
       ZarrUtils.layerSpec(options("valuesNode" -> "a,b"))
     }
+
+    intercept[IllegalArgumentException] {
+      ZarrUtils.layerSpec(options())
+    }
   }
 
-  test("requireShape2D rejects non-2D shapes") {
+  test("requireShape2D accepts 2D and rejects others") {
+    ZarrUtils.requireShape2D(Array(3, 5)) shouldBe (3, 5)
+
     intercept[IllegalArgumentException] {
       ZarrUtils.requireShape2D(Array(2))
     }

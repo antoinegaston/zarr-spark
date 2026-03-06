@@ -99,6 +99,111 @@ df.filter("gene IN ('TP53', 'BRCA1')").show()
 
 ---
 
+## Migrating data to Zarr
+
+The connector reads Zarr stores that contain a **2D numeric array** (values) and **1D string arrays** (row and column labels). Both Zarr v2 and v3 format stores are supported. The examples below show how to create compatible stores from common formats using Python.
+
+### CSV to Zarr
+
+Assumes a CSV where the first column contains row identifiers and the header contains column names (e.g. gene symbols):
+
+```
+,TP53,BRCA1,EGFR
+sample_1,5.2,3.1,0.0
+sample_2,0.0,7.4,1.8
+```
+
+**zarr-python 2.x** (`pip install "zarr>=2,<3"`):
+
+```python
+import numpy as np
+import pandas as pd
+import zarr
+
+df = pd.read_csv("expression.csv", index_col=0)
+
+root = zarr.open_group("expression.zarr", mode="w")
+root.array("values",  data=df.values.astype(np.float32), chunks=(1000, 1000))
+root.array("columns", data=np.array(df.columns.tolist()))
+root.array("index",   data=np.array(df.index.tolist()))
+```
+
+**zarr-python 3.x** (`pip install "zarr>=3"`):
+
+```python
+import numpy as np
+import pandas as pd
+import zarr
+
+df = pd.read_csv("expression.csv", index_col=0)
+
+root = zarr.open_group("expression.zarr", mode="w")
+root.create_array("values",  data=df.values.astype(np.float32), chunks=(1000, 1000))
+root.create_array("columns", data=df.columns.values, dtype=str)
+root.create_array("index",   data=df.index.values, dtype=str)
+```
+
+Read it with the connector (same regardless of Zarr version):
+
+```python
+df = (
+    spark.read.format("zarr")
+    .option("path", "expression.zarr")
+    .option("valuesNode", "values")
+    .option("columnsNodes", "columns")
+    .option("indexNodes", "index")
+    .option("columnAliases", "gene")
+    .option("indexAliases", "sample")
+    .load()
+)
+```
+
+### h5ad (AnnData) to Zarr
+
+> `pip install anndata scipy`
+
+Works with both zarr-python 2.x and 3.x (anndata abstracts over the zarr version).
+
+```python
+import anndata as ad
+import scipy.sparse
+
+adata = ad.read_h5ad("data.h5ad")
+
+# The connector reads dense 2D arrays; densify if sparse
+if scipy.sparse.issparse(adata.X):
+    adata.X = adata.X.toarray()
+
+adata.write_zarr("data.zarr")
+```
+
+`write_zarr` stores the expression matrix at `X/` and the observation/variable indices at `obs/_index` and `var/_index`. String arrays are encoded with a `vlen-utf8` filter (v2) or codec (v3), both of which the connector reads natively.
+
+Read it with the connector:
+
+```python
+df = (
+    spark.read.format("zarr")
+    .option("path", "data.zarr")
+    .option("valuesNode", "X")
+    .option("columnsNodes", "var/_index")
+    .option("indexNodes", "obs/_index")
+    .option("columnAliases", "gene")
+    .option("indexAliases", "cell")
+    .load()
+)
+```
+
+> If your AnnData has a named index (e.g. `adata.obs.index.name = "cell_id"`), replace `obs/_index` with `obs/cell_id` (and likewise for `var`).
+
+### Notes
+
+- **String arrays** can use fixed-width NumPy dtype (`<U`), object dtype (`|O`) with a `vlen-utf8` filter (zarr v2), or the native `vlen-utf8` codec (zarr v3).
+- **Chunk size** controls partition granularity in Spark. Larger chunks reduce partition count; smaller chunks improve pruning for selective queries. `(1000, 1000)` is a reasonable starting point.
+- For cloud storage, write to a local path first, then upload the `.zarr` directory to `s3://`, `abfs://`, `gs://`, etc.
+
+---
+
 ## Options reference
 
 ### Required

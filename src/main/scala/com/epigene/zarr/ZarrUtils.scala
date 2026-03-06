@@ -561,7 +561,8 @@ object ZarrUtils {
       dtypeLen: Int,
       byteOrder: ByteOrder,
       compressor: Option[V2Compressor],
-      dimensionSeparator: String
+      dimensionSeparator: String,
+      vlenUtf8: Boolean = false
   )
 
   private sealed trait V2Compressor extends Serializable
@@ -599,23 +600,41 @@ object ZarrUtils {
     if (zarrFormat != 2) return None
 
     val dtype = root.path("dtype").asText("")
-    val dtypeMatch = """([<>|=]?)([US])(\d+)""".r
-    val (orderChar, kind, len) = dtype match {
-      case dtypeMatch(order, k, n) => (order, k.charAt(0), n.toInt)
-      case _                       => return None
+
+    val filters = root.path("filters")
+    val filterIds = if (filters.isArray) {
+      filters.elements().asScala.toVector.map(_.path("id").asText(""))
+    } else Vector.empty
+    val hasVlenUtf8 = filterIds.contains("vlen-utf8")
+    val unsupportedFilters = filterIds.filterNot(_ == "vlen-utf8")
+    if (unsupportedFilters.nonEmpty) {
+      throw new IllegalArgumentException(
+        s"Unsupported filter(s) for v2 string arrays: ${unsupportedFilters.mkString(", ")}"
+      )
     }
 
-    if (len <= 0) return None
+    val isObjectDtype = dtype == "|O" || dtype == "object"
+    val dtypeMatch = """([<>|=]?)([US])(\d+)""".r
+
+    val (orderChar, kind, len, vlen) = if (isObjectDtype && hasVlenUtf8) {
+      ("|", 'O', 0, true)
+    } else {
+      dtype match {
+        case dtypeMatch(order, k, n) if n.toInt > 0 =>
+          if (hasVlenUtf8) {
+            throw new IllegalArgumentException(
+              "vlen-utf8 filter is only expected with object dtype, not fixed-width string dtype."
+            )
+          }
+          (order, k.charAt(0), n.toInt, false)
+        case _ => return None
+      }
+    }
 
     val shape = readIntArray(root.path("shape"))
     val chunks = readIntArray(root.path("chunks"))
     if (shape.length != 1 || chunks.length != 1) {
       throw new IllegalArgumentException(s"Only 1D string arrays are supported for v2 (got shape ${shape.length}D).")
-    }
-
-    val filters = root.path("filters")
-    if (filters.isArray && filters.size() > 0) {
-      throw new IllegalArgumentException("filters are not supported for v2 string arrays.")
     }
 
     val fillValueNode = root.path("fill_value")
@@ -641,7 +660,7 @@ object ZarrUtils {
       case _   => ByteOrder.LITTLE_ENDIAN
     }
 
-    Some(V2StringArrayMeta(shape, chunks, fillValue, kind, len, byteOrder, compressor, dimSep))
+    Some(V2StringArrayMeta(shape, chunks, fillValue, kind, len, byteOrder, compressor, dimSep, vlen))
   }
 
   private def readV2StringArray(
@@ -687,6 +706,8 @@ object ZarrUtils {
       case Some(V2Gzip)  => gzipDecompress(raw)
       case Some(V2Zlib)  => zlibDecompress(raw)
     }
+
+    if (meta.vlenUtf8) return decodeVlenUtf8(bytes)
 
     meta.dtypeKind match {
       case 'S' => decodeFixedBytes(bytes, meta.dtypeLen)

@@ -90,6 +90,107 @@ class ZarrDataSourceSpec extends ZarrBaseSpec with SparkTestSession {
     }
   }
 
+  test("reads v2 arrays with vlen-utf8 string labels") {
+    assumeHadoop()
+    ZarrTestUtils.withTempDir() { root =>
+      val valuesPath = root.resolve("values")
+      val columnsPath = root.resolve("columns")
+      val indexPath = root.resolve("index")
+
+      ZarrTestUtils.writeV2FloatArray(valuesPath, rows = 2, cols = 3, data = Array[Float](1, 2, 3, 4, 5, 6))
+      ZarrTestUtils.writeV2VLenStringArray(columnsPath, Seq("TP53", "BRCA1", "EGFR"))
+      ZarrTestUtils.writeV2VLenStringArray(indexPath, Seq("cell_1", "cell_2"))
+
+      val df = spark.read
+        .format("zarr")
+        .option("path", root.toString)
+        .option("valuesNode", "values")
+        .option("columnsNodes", "columns")
+        .option("indexNodes", "index")
+        .option("columnAliases", "gene")
+        .option("indexAliases", "cell")
+        .load()
+
+      df.columns shouldBe Array("cell", "gene", "value")
+
+      val rows = df
+        .where("gene = 'BRCA1'")
+        .select("cell", "value")
+        .collect()
+        .map(r => r.getString(0) -> r.getFloat(1))
+        .toMap
+
+      rows shouldBe Map("cell_1" -> 2.0f, "cell_2" -> 5.0f)
+    }
+  }
+
+  test("reads v2 arrays with fixed-width Unicode string labels") {
+    assumeHadoop()
+    ZarrTestUtils.withTempDir() { root =>
+      val valuesPath = root.resolve("values")
+      val columnsPath = root.resolve("columns")
+      val indexPath = root.resolve("index")
+
+      ZarrTestUtils.writeV2FloatArray(valuesPath, rows = 2, cols = 2, data = Array[Float](10, 20, 30, 40))
+      ZarrTestUtils.writeV2FixedUnicodeStringArray(columnsPath, Seq("geneA", "geneB"))
+      ZarrTestUtils.writeV2FixedUnicodeStringArray(indexPath, Seq("s1", "s2"))
+
+      val df = spark.read
+        .format("zarr")
+        .option("path", root.toString)
+        .option("valuesNode", "values")
+        .option("columnsNodes", "columns")
+        .option("indexNodes", "index")
+        .option("columnAliases", "gene")
+        .option("indexAliases", "sample")
+        .load()
+
+      val rows = df
+        .where("gene = 'geneB'")
+        .select("sample", "value")
+        .collect()
+        .map(r => r.getString(0) -> r.getFloat(1))
+        .toMap
+
+      rows shouldBe Map("s1" -> 20.0f, "s2" -> 40.0f)
+    }
+  }
+
+  test("filter pushdown with In filter prunes partitions") {
+    assumeHadoop()
+    ZarrTestUtils.withTempDir() { root =>
+      val valuesPath = root.resolve("values")
+      val columnsPath = root.resolve("columns")
+      val indexPath = root.resolve("index")
+
+      ZarrTestUtils.writeV3FloatArray(
+        valuesPath, rows = 3, cols = 4,
+        data = Array[Float](1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
+      )
+      ZarrTestUtils.writeV3StringArray(columnsPath, Seq("a", "b", "c", "d"))
+      ZarrTestUtils.writeV3StringArray(indexPath, Seq("r0", "r1", "r2"))
+
+      val df = spark.read
+        .format("zarr")
+        .option("path", root.toString)
+        .option("valuesNode", "values")
+        .option("columnsNodes", "columns")
+        .option("indexNodes", "index")
+        .option("columnAliases", "col")
+        .option("indexAliases", "row")
+        .load()
+
+      val rows = df
+        .where("col IN ('a', 'c') AND row = 'r1'")
+        .select("col", "value")
+        .collect()
+        .map(r => r.getString(0) -> r.getFloat(1))
+        .toMap
+
+      rows shouldBe Map("a" -> 5.0f, "c" -> 7.0f)
+    }
+  }
+
   test("supports multi-index nodes with alias lists") {
     assumeHadoop()
     ZarrTestUtils.withTempDir() { root =>
