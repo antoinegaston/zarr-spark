@@ -1,6 +1,7 @@
 # zarr-spark
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![codecov](https://codecov.io/gh/antoinegaston/zarr-spark/branch/master/graph/badge.svg)](https://codecov.io/gh/antoinegaston/zarr-spark)
 
 A Spark DataSource V2 connector for reading [Zarr](https://zarr.dev/) arrays directly from object storage, with chunk-aligned partitioning and filter pushdown.
 
