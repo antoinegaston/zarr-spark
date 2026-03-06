@@ -3,7 +3,7 @@ import sbtassembly.AssemblyPlugin.autoImport._
 import sbtassembly.MergeStrategy
 
 // Match your Databricks cluster (Scala 2.13)
-ThisBuild / scalaVersion := "2.13.12"
+ThisBuild / scalaVersion := "2.13.15"
 ThisBuild / versionScheme := Some("early-semver")
 ThisBuild / resolvers ++= Seq(
   // Required for edu.ucar/cdm-core which is hosted in Unidata repos, not Maven Central
